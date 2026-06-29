@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import client from '../api/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Send } from 'lucide-react';
@@ -6,8 +7,9 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
 export default function Chat() {
+  const { botId } = useParams();
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hello! I am Aria, your virtual assistant. How can I help you today?' }
+    { role: 'assistant', text: 'Hello! I am your virtual assistant. How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export default function Chat() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !botId) return;
 
     const userMsg = input.trim();
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
@@ -36,7 +38,7 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      const res = await client.post('/chat', {
+      const res = await client.post(`/chat/${botId}`, {
         session_id: sessionId,
         message: userMsg
       });
