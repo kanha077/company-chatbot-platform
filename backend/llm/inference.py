@@ -36,7 +36,10 @@ def try_gemini(api_key: str, messages: list[dict]) -> str:
             gemini_history.append({"role": "model", "parts": [msg["content"]]})
             
     # If using System prompt, Gemini supports it natively in GenerativeModel(system_instruction=sys_prompt)
-    model = genai.GenerativeModel(model_name=GEMINI_MODEL_ID, system_instruction=sys_prompt)
+    if sys_prompt.strip():
+        model = genai.GenerativeModel(model_name=GEMINI_MODEL_ID, system_instruction=sys_prompt)
+    else:
+        model = genai.GenerativeModel(model_name=GEMINI_MODEL_ID)
     
     # Gemini chat session doesn't easily let us send history like this if we use system_instruction, 
     # instead we can just generate content by formatting it as a single string, or starting a chat.
