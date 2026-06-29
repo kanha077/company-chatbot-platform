@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import client from '../api/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Send } from 'lucide-react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -47,6 +49,12 @@ export default function Chat() {
     }
   };
 
+  const renderMarkdown = (text) => {
+    const rawMarkup = marked(text, { breaks: true });
+    const cleanMarkup = DOMPurify.sanitize(rawMarkup);
+    return { __html: cleanMarkup };
+  };
+
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto bg-gray-50">
       <header className="bg-blue-600 text-white p-4 text-center font-bold shadow-md">
@@ -57,7 +65,7 @@ export default function Chat() {
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] p-3 rounded-lg ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white shadow text-gray-800 rounded-bl-none'}`}>
-              {msg.text}
+              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={renderMarkdown(msg.text)} />
             </div>
           </div>
         ))}
