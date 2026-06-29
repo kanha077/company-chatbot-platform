@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../api/client';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,24 +16,15 @@ export default function Auth() {
     
     try {
       if (isLogin) {
-        const formData = new URLSearchParams();
-        formData.append('username', email);
-        formData.append('password', password);
-        
-        const res = await client.post('/auth/login', formData, {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        });
-        localStorage.setItem('token', res.data.access_token);
+        await signInWithEmailAndPassword(auth, email, password);
         navigate('/dashboard');
       } else {
-        await client.post('/auth/register', { email, password });
+        await createUserWithEmailAndPassword(auth, email, password);
         setIsLogin(true); // Switch to login after register
         setError('Registration successful. Please login.');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'An error occurred');
+      setError(err.message || 'An error occurred');
     }
   };
 

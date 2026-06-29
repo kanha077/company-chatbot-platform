@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
-import { Plus, Settings, MessageSquare, Code, Upload } from 'lucide-react';
+import { Plus, Settings, MessageSquare, Code, Upload, LogOut } from 'lucide-react';
+import { auth } from '../firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export default function Dashboard() {
   const [bots, setBots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newBotName, setNewBotName] = useState('');
   const [newCompanyName, setNewCompanyName] = useState('');
@@ -15,16 +18,20 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchBots();
-  }, []);
-
-  const fetchBots = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        fetchBots(currentUser);
+      } else {
         navigate('/auth');
-        return;
       }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const fetchBots = async (currentUser) => {
+    try {
+      const token = await currentUser.getIdToken();
       const res = await client.get('/bots', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -33,9 +40,7 @@ export default function Dashboard() {
         setActiveBot(res.data[0]);
       }
     } catch (err) {
-      if (err.response?.status === 401) {
-        navigate('/auth');
-      }
+      console.error("Failed to fetch bots", err);
     } finally {
       setLoading(false);
     }
@@ -44,7 +49,7 @@ export default function Dashboard() {
   const handleCreateBot = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = await user.getIdToken();
       await client.post('/bots', {
         bot_name: newBotName,
         company_name: newCompanyName
@@ -52,7 +57,9 @@ export default function Dashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setShowCreate(false);
-      fetchBots();
+      setNewBotName('');
+      setNewCompanyName('');
+      fetchBots(user);
     } catch (err) {
       console.error("Failed to create bot", err);
     }
@@ -67,7 +74,7 @@ export default function Dashboard() {
     
     setUploadStatus('Uploading...');
     try {
-      const token = localStorage.getItem('token');
+      const token = await user.getIdToken();
       const res = await client.post(`/admin/upload-pdf/${activeBot.id}`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -75,9 +82,15 @@ export default function Dashboard() {
         }
       });
       setUploadStatus(res.data.message);
+      setFile(null);
     } catch (error) {
       setUploadStatus('Upload failed. Please try again.');
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate('/auth');
   };
 
   if (loading) return <div className="p-10 text-center">Loading...</div>;
@@ -85,11 +98,14 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r shadow-sm">
-        <div className="p-4 border-b">
+      <div className="w-64 bg-white border-r shadow-sm flex flex-col">
+        <div className="p-4 border-b flex justify-between items-center">
           <h1 className="text-xl font-bold text-gray-800">SaaS Dashboard</h1>
+          <button onClick={handleLogout} className="text-gray-500 hover:text-red-500" title="Logout">
+            <LogOut size={18} />
+          </button>
         </div>
-        <div className="p-4">
+        <div className="p-4 flex-1 overflow-y-auto">
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Your Chatbots</h2>
           <ul className="space-y-2">
             {bots.map(bot => (
@@ -109,6 +125,9 @@ export default function Dashboard() {
           >
             <Plus size={16} /> New Chatbot
           </button>
+        </div>
+        <div className="p-4 border-t text-xs text-gray-400 truncate">
+          Logged in as: {user?.email}
         </div>
       </div>
 

@@ -14,8 +14,4 @@ langdetect==1.0.9
 slowapi==0.1.9
 numpy<2.0.0
 google-generativeai
-sqlalchemy
-bcrypt
-pyjwt
-passlib[bcrypt]
-psycopg2-binary
+firebase-admin

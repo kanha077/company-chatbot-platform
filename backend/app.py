@@ -7,7 +7,6 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import time
 import os
-from sqlalchemy.orm import Session
 
 from config import HF_MODEL_ID, RATE_LIMIT_PER_MINUTE, SUPPORT_EMAIL, SUPPORT_URL
 from auth.api_key import verify_api_key
@@ -20,12 +19,8 @@ from ingestion.pdf_parser import parse_pdf_bytes
 from ingestion.chunker import chunk_text
 from vector_store.chroma_client import add_chunks, clear_all
 from keepalive import start_keepalive
-from db import engine, get_db
-import models
+from firebase_config import db
 from router import auth, bots
-
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SaaS Chatbot Engine")
 
@@ -76,17 +71,18 @@ def health_check():
 
 @app.post("/chat/{bot_id}")
 @limiter.limit(RATE_LIMIT_PER_MINUTE)
-async def chat(bot_id: str, request: Request, body: ChatRequest, db: Session = Depends(get_db)):
-    bot = db.query(models.Chatbot).filter(models.Chatbot.id == bot_id).first()
-    if not bot:
+async def chat(bot_id: str, request: Request, body: ChatRequest):
+    bot_doc = db.collection("chatbots").document(bot_id).get()
+    if not bot_doc.exists:
         raise HTTPException(status_code=404, detail="Chatbot not found")
         
+    bot = bot_doc.to_dict()
     user_msg = body.message.strip()
     
     # Layer 1 & 2: Guardrails and Intent
     guardrail_block = check_guardrails(user_msg)
     if guardrail_block == "JAILBREAK":
-        reply = f"I'm not able to help with that. I'm designed to assist with {bot.company_name} topics only. How can I help you with something related to our services?"
+        reply = f"I'm not able to help with that. I'm designed to assist with {bot.get('company_name')} topics only. How can I help you with something related to our services?"
         return {"reply": reply, "source_chunks": [], "confidence": 1.0, "session_id": body.session_id}
     elif guardrail_block == "HARMFUL":
         reply = f"That's not something I'm set up to assist with. Please reach out to {SUPPORT_EMAIL} if you need urgent help."
@@ -95,7 +91,7 @@ async def chat(bot_id: str, request: Request, body: ChatRequest, db: Session = D
     intent = classify_intent(user_msg)
     if intent == "GREETING":
         return {
-            "reply": f"Hello! I'm {bot.bot_name}, {bot.company_name}'s virtual assistant. How can I help you today?",
+            "reply": f"Hello! I'm {bot.get('bot_name')}, {bot.get('company_name')}'s virtual assistant. How can I help you today?",
             "source_chunks": [],
             "confidence": 1.0,
             "session_id": body.session_id
@@ -108,10 +104,9 @@ async def chat(bot_id: str, request: Request, body: ChatRequest, db: Session = D
         return {"reply": reply, "source_chunks": [], "confidence": 0.0, "session_id": body.session_id}
         
     # Build prompt and chat history
-    # Pass bot specific system prompt directly instead of building from a generic one if you want
     sys_prompt = build_system_prompt(context_text)
-    if bot.system_prompt:
-        sys_prompt += f"\n\nAdditional Instructions: {bot.system_prompt}"
+    if bot.get('system_prompt'):
+        sys_prompt += f"\n\nAdditional Instructions: {bot.get('system_prompt')}"
         
     messages = [{"role": "system", "content": sys_prompt}]
     
@@ -134,9 +129,9 @@ async def chat(bot_id: str, request: Request, body: ChatRequest, db: Session = D
     }
 
 @app.post("/admin/upload-pdf/{bot_id}")
-async def upload_pdf(bot_id: str, file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    bot = db.query(models.Chatbot).filter(models.Chatbot.id == bot_id, models.Chatbot.owner_id == current_user.id).first()
-    if not bot:
+async def upload_pdf(bot_id: str, file: UploadFile = File(...), current_user: dict = Depends(auth.get_current_user)):
+    bot_doc = db.collection("chatbots").document(bot_id).get()
+    if not bot_doc.exists or bot_doc.to_dict().get("owner_id") != current_user.get("uid"):
         raise HTTPException(status_code=404, detail="Chatbot not found or unauthorized")
         
     contents = await file.read()
@@ -145,7 +140,7 @@ async def upload_pdf(bot_id: str, file: UploadFile = File(...), current_user: mo
     chunks = chunk_text(text)
     add_chunks(chunks, source_id=file.filename, bot_id=bot_id)
     
-    return {"message": f"Successfully indexed {len(chunks)} chunks into {bot.bot_name} knowledge base."}
+    return {"message": f"Successfully indexed {len(chunks)} chunks into {bot_doc.to_dict().get('bot_name')} knowledge base."}
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
