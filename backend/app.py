@@ -123,7 +123,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     # Extract identity
     try:
         from llm.inference import generate_response
-        extraction_prompt = f"Extract the primary company name from this text. Also suggest a friendly, professional one-word name for an AI assistant representing this company. Output ONLY two lines in exactly this format:\\nCompany: [Name]\\nBot: [Name]\\n\\nText snippet: {text[:3000]}"
+        extraction_prompt = f"Extract the primary company name from this text. Also suggest a friendly, professional one-word name for an AI assistant representing this company. Output ONLY two lines in exactly this format:\nCompany: [Name]\nBot: [Name]\n\nText snippet: {text[:3000]}"
         extraction_msg = [{"role": "user", "content": extraction_prompt}]
         response = generate_response(extraction_msg)
         
@@ -131,7 +131,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         extracted_bot = None
         
         # More robust parsing for smaller models that might add filler text
-        for line in response.split('\\n'):
+        for line in response.split('\n'):
             line_clean = line.strip().lower()
             if 'company:' in line_clean:
                 # Find the actual text after 'company:'
