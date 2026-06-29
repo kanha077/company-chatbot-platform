@@ -56,3 +56,4 @@ dynamic_config.json
 *.swo
 *~
 .DS_Store
+.pr.md

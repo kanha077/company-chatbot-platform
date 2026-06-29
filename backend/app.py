@@ -12,12 +12,11 @@ from config import HF_MODEL_ID, RATE_LIMIT_PER_MINUTE, SUPPORT_EMAIL, SUPPORT_UR
 from auth.api_key import verify_api_key
 from router.classifier import classify_intent
 from router.guardrails import check_guardrails
-from router.retriever import retrieve_context
 from llm.prompt_builder import build_system_prompt
 from llm.inference import generate_response
 from ingestion.pdf_parser import parse_pdf_bytes
 from ingestion.chunker import chunk_text
-from vector_store.chroma_client import add_chunks, clear_all
+from vector_store.chroma_client import add_chunks, clear_all, retrieve_context
 from keepalive import start_keepalive
 from firebase_config import db
 from router import auth, bots
