@@ -12,7 +12,7 @@ HF_SPACE_URL = os.getenv("HF_SPACE_URL")
 GEMINI_API_KEY_1 = os.getenv("GEMINI_API_KEY_1")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2")
 GEMINI_API_KEY_3 = os.getenv("GEMINI_API_KEY_3")
-GEMINI_MODEL_ID = os.getenv("GEMINI_MODEL_ID", "gemini-1.5-flash-8b")
+GEMINI_MODEL_ID = os.getenv("GEMINI_MODEL_ID", "gemini-1.5-flash")
 
 # Auth
 API_SECRET_KEY = os.getenv("API_SECRET_KEY", "your-secret-key-here")
