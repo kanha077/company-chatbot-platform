@@ -1,5 +1,9 @@
 from huggingface_hub import HfApi
 import os
+from dotenv import load_dotenv
+
+# Load local .env
+load_dotenv('backend/.env')
 
 TOKEN = os.environ.get("HF_TOKEN", "your_token_here")
 api = HfApi(token=TOKEN)
@@ -15,6 +19,17 @@ try:
     print("Space created or already exists.")
 except Exception as e:
     print(f"Error creating space: {e}")
+
+# Push Secrets
+print("Pushing Secrets to Hugging Face...")
+for key_name in ["API_SECRET_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3"]:
+    val = os.environ.get(key_name)
+    if val:
+        try:
+            api.add_space_secret(repo_id=repo_id, key=key_name, value=val)
+        except Exception as e:
+            print(f"Error setting secret {key_name}: {e}")
+print("Secrets pushed successfully.")
 
 print("Uploading backend files...")
 try:

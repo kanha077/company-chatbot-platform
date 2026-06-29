@@ -8,6 +8,12 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 HF_MODEL_ID = os.getenv("HF_MODEL_ID", "Qwen/Qwen2.5-3B-Instruct")
 HF_SPACE_URL = os.getenv("HF_SPACE_URL")
 
+# Gemini Settings
+GEMINI_API_KEY_1 = os.getenv("GEMINI_API_KEY_1")
+GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2")
+GEMINI_API_KEY_3 = os.getenv("GEMINI_API_KEY_3")
+GEMINI_MODEL_ID = os.getenv("GEMINI_MODEL_ID", "gemini-1.5-flash-8b")
+
 # Auth
 API_SECRET_KEY = os.getenv("API_SECRET_KEY", "your-secret-key-here")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password")
