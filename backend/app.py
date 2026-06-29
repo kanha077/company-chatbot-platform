@@ -129,14 +129,24 @@ async def upload_pdf(file: UploadFile = File(...)):
         
         extracted_company = None
         extracted_bot = None
+        
+        # More robust parsing for smaller models that might add filler text
         for line in response.split('\\n'):
-            if line.startswith('Company:'):
-                extracted_company = line.split('Company:')[1].strip()
-            elif line.startswith('Bot:'):
-                extracted_bot = line.split('Bot:')[1].strip()
+            line_clean = line.strip().lower()
+            if 'company:' in line_clean:
+                # Find the actual text after 'company:'
+                idx = line_clean.find('company:')
+                # Extract from the original case-sensitive line
+                extracted_company = line[idx + 8:].strip().strip('*').strip('"').strip("'")
+            elif 'bot:' in line_clean:
+                idx = line_clean.find('bot:')
+                extracted_bot = line[idx + 4:].strip().strip('*').strip('"').strip("'")
                 
         if extracted_company and extracted_bot:
             save_dynamic_config(extracted_company, extracted_bot)
+            print(f"Successfully extracted identity: Bot '{extracted_bot}' for '{extracted_company}'")
+        else:
+            print(f"Failed to parse identity from LLM response:\\n{response}")
     except Exception as e:
         print(f"Identity extraction failed: {e}")
         
